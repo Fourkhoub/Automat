@@ -1,0 +1,41 @@
+# Envoie le bilan des dernières 24 h par email, chaque matin.
+
+name: Rapport quotidien
+
+on:
+  schedule:
+    - cron: "13 6 * * *"        # 6h13 UTC = 7h13 à Paris en hiver, 8h13 en été
+  workflow_dispatch:
+
+concurrency:
+  group: base-duckdb
+  cancel-in-progress: false
+
+jobs:
+  rapport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Récupérer la base depuis le cache
+        uses: actions/cache/restore@v5
+        with:
+          path: retards.duckdb
+          key: base-${{ github.run_id }}
+          restore-keys: base-
+          fail-on-cache-miss: true    # pas de base = pas de rapport
+
+      - name: Envoyer le rapport
+        env:
+          EMAIL_EXPEDITEUR: ${{ secrets.EMAIL_EXPEDITEUR }}
+          EMAIL_MOT_DE_PASSE: ${{ secrets.EMAIL_MOT_DE_PASSE }}
+          EMAIL_DESTINATAIRE: ${{ secrets.EMAIL_DESTINATAIRE }}
+        run: python rapport.py

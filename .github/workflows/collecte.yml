@@ -1,0 +1,47 @@
+# Collecte automatique des retards SNCF, deux fois par heure.
+# Chaque exécution démarre sur une machine vierge : la base DuckDB est donc
+# récupérée depuis le cache GitHub au début, puis sauvegardée à la fin.
+
+name: Collecte des retards
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"     # à hh:07 et hh:37, heure UTC
+  workflow_dispatch:            # bouton "Run workflow" pour lancer à la main
+
+concurrency:
+  group: base-duckdb            # jamais deux exécutions en même temps sur la base
+  cancel-in-progress: false
+
+jobs:
+  collecte:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Installer les bibliothèques
+        run: pip install -r requirements.txt
+
+      - name: Récupérer la base depuis le cache
+        uses: actions/cache/restore@v5
+        with:
+          path: retards.duckdb
+          key: base-${{ github.run_id }}
+          restore-keys: base-
+
+      - name: Collecter
+        run: python main.py
+
+      - name: Sauvegarder la base dans le cache
+        uses: actions/cache/save@v5
+        with:
+          path: retards.duckdb
+          key: base-${{ github.run_id }}-${{ github.run_attempt }}

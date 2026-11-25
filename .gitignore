@@ -1,0 +1,7 @@
+venv/
+.venv/
+.env
+*.duckdb
+*.duckdb.wal
+__pycache__/
+apercu_email.html
